@@ -8,7 +8,8 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden}
 body{background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;overflow:hidden;color:#fff}
-.game-container{display:flex;gap:20px;align-items:flex-start;position:relative}
+.game-container{display:flex;gap:20px;align-items:center;justify-content:center;position:relative;width:100%;flex-wrap:wrap}
+#game-wrapper{position:relative;display:inline-block;z-index:5;margin:auto}
 #three-bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
 .side-panel{display:flex;flex-direction:column;gap:12px;min-width:130px;z-index:5}
 .panel-box{background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.12);border-radius:10px;padding:10px;text-align:center;backdrop-filter:blur(5px)}
@@ -17,7 +18,7 @@ body{background:#000;display:flex;justify-content:center;align-items:center;min-
 #board-canvas{border:2px solid rgba(68,68,255,.4);border-radius:6px;background:rgba(10,10,40,.7);display:block;backdrop-filter:blur(3px);z-index:5;outline:none}
 #board-canvas:focus{box-shadow:0 0 30px rgba(68,68,255,.5),0 0 0 2px #4488ff}
 #next-canvas{border:1px solid rgba(255,255,255,.1);border-radius:6px;background:rgba(255,255,255,.02);display:block;z-index:5}
-.overlay{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,.8);z-index:20;opacity:0;pointer-events:none;transition:opacity .3s}
+.overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,.8);z-index:20;opacity:0;pointer-events:none;transition:opacity .3s;text-align:center}
 .overlay.active{opacity:1;pointer-events:all}
 .overlay h1{font-size:48px;margin-bottom:8px;text-shadow:0 0 40px #4488ff,0 0 80px #2244aa}
 .overlay h2{font-size:28px;margin-bottom:16px;text-shadow:0 0 20px #ff4444}
@@ -519,12 +520,14 @@ function isValidPosition(piece, boardState, ox=0, oy=0) {
   return true;
 }
 
+let BLOCK = 30;
+
 function resizeCanvas() {
   const vw = window.innerWidth, vh = window.innerHeight;
   const maxH = vh - 40, maxW = vw - 230;
   const blockFromH = Math.floor(maxH / ROWS);
   const blockFromW = Math.floor(maxW / COLS);
-  let BLOCK = Math.min(blockFromH, blockFromW, 36);
+  BLOCK = Math.min(blockFromH, blockFromW, 36);
   BLOCK = Math.max(BLOCK, 16);
   const canvasW = COLS * BLOCK, canvasH = ROWS * BLOCK;
   const canvas = document.getElementById('board-canvas');
