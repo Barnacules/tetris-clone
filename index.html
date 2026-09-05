@@ -27,6 +27,7 @@ body{background:#0a0a2e;display:flex;justify-content:center;align-items:center;f
 .btn{margin-top:14px;padding:12px 30px;font-size:17px;font-weight:bold;border:none;border-radius:8px;cursor:pointer;background:linear-gradient(135deg,#4466ff,#6644ff);color:#fff;box-shadow:0 4px 20px rgba(68,102,255,.4);transition:all .2s}
 .btn:hover{transform:scale(1.06);box-shadow:0 6px 30px rgba(68,102,255,.6)}
 .controls-info{font-size:10px;color:#666;line-height:1.6;margin-top:8px}
+#next-canvas{display:block;margin:0 auto;}
 .controls-info span{color:#888}
 #level-badge{position:fixed;top:8px;left:8px;background:rgba(68,68,255,.2);border:2px solid rgba(68,68,255,.4);border-radius:6px;color:#8888ff;padding:4px 10px;font-size:14px;font-weight:bold}
 #debug{position:fixed;bottom:6px;left:6px;color:#ff6666;font-family:monospace;font-size:11px;background:rgba(0,0,0,.8);padding:6px;border-radius:4px;z-index:25}
@@ -314,6 +315,7 @@ function draw(){
   if(currentPiece&&!gameOver){ctx.shadowColor=currentPiece.color;ctx.shadowBlur=10;for(let r=0;r<currentPiece.shape.length;r++)for(let c=0;c<currentPiece.shape[r].length;c++){if(!currentPiece.shape[r][c])continue;const px=currentPiece.x+c,py=currentPiece.y+r;if(py>=0)drawBlock(px,py,currentPiece.color,false);}ctx.shadowBlur=0;}
   if(shakeTimer>0){ctx.translate(Math.sin(shakeTimer)*5,Math.sin(shakeTimer)*5);shakeTimer--;}
   ctx.restore();
+  ctx.setTransform(1,0,0,1,0,0);
 }
 function drawNext(){
   if(!nextCtx||!nextCanvas)return;nextCtx.clearRect(0,0,nextCanvas.width,nextCanvas.height);
