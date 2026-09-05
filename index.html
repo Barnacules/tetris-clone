@@ -266,7 +266,7 @@ function holdPieceFn(){
 }
 function moveLeft(){if(!gameRunning||gamePaused||gameOver)return;if(isValidPosition(currentPiece,board,-1,0)){currentPiece.x--;playSound('move');draw();}}
 function moveRight(){if(!gameRunning||gamePaused||gameOver)return;if(isValidPosition(currentPiece,board,1,0)){currentPiece.x++;playSound('move');draw();}}
-function moveDown(){if(!gameRunning||gamePaused||gameOver)return false;if(isValidPosition(currentPiece,board,0,1)){currentPiece.y++;score+=1;dropCounter=0;draw();return true;}return false;}
+function moveDown(){if(!gameRunning||gamePaused||gameOver)return false;if(isValidPosition(currentPiece,board,0,1)){currentPiece.y++;score+=1;dropCounter=0;playSound('move');draw();return true;}return false;}
 function hardDrop(){if(!gameRunning||gamePaused||gameOver||lockedInFlight)return;let d=0;while(isValidPosition(currentPiece,board,0,1)){currentPiece.y++;d++;}score+=d*2;playSound('drop');lockPiece();draw();shakeTimer=15;log('Drop:'+d);}
 function rotatePiece(){if(!gameRunning||gamePaused||gameOver)return;if(currentPiece.type==='O')return;const rot=rotateMatrix(currentPiece.shape);const test={type:currentPiece.type,shape:rot,color:currentPiece.color,x:currentPiece.x,y:currentPiece.y};if(isValidPosition(test,board)){currentPiece.shape=rot;playSound('rotate');draw();}else{for(const off of[-1,1,-2,2]){const test2={type:currentPiece.type,shape:rot,color:currentPiece.color,x:currentPiece.x+off,y:currentPiece.y};if(isValidPosition(test2,board)){currentPiece.shape=rot;currentPiece.x+=off;playSound('rotate');draw();return;}}}}
 function lockPiece(){
@@ -295,6 +295,7 @@ function emitParticles(cx,cy,cnt,color){for(let i=0;i<cnt;i++)particles2D.push({
 // ==================== DRAWING ====================
 function lightenColor(hex,amt){const n=parseInt(hex.slice(1),16);return 'rgb('+Math.min(255,(n>>16)+Math.round(255*amt))+','+Math.min(255,((n>>8)&0xFF)+Math.round(255*amt))+','+Math.min(255,(n&0xFF)+Math.round(255*amt))+')';}
 function darkenColor(hex,amt){const n=parseInt(hex.slice(1),16);return 'rgb('+Math.max(0,Math.round((n>>16)*(1-amt)))+','+Math.max(0,Math.round(((n>>8)&0xFF)*(1-amt)))+','+Math.max(0,Math.round((n&0xFF)*(1-amt)))+')';}
+function getGhostY(){if(!currentPiece||!board)return currentPiece?currentPiece.y:0;let ghostY=currentPiece.y;while(true){const testY=ghostY+1;const testPiece={type:currentPiece.type,shape:currentPiece.shape,color:currentPiece.color,x:currentPiece.x,y:testY};if(isValidPosition(testPiece,board))ghostY=testY;else break;}return ghostY;}
 function drawBlock(x,y,color,flash){
   if(!ctx)return;const p=1,bx=x*BLOCK+p,by=y*BLOCK+p,bs=BLOCK-p*2;
   const grad=ctx.createLinearGradient(bx,by,bx,by+bs);
@@ -312,7 +313,7 @@ function draw(){
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)ctx.strokeRect(c*BLOCK,r*BLOCK,BLOCK,BLOCK);
   const now=performance.now();
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(board[r][c]){const a=animations.some(function(a){return a.type==='clear'&&a.row===r&&now-a.time<300;});drawBlock(c,r,board[r][c],a);}
-  if(currentPiece&&!gameOver){ctx.shadowColor=currentPiece.color;ctx.shadowBlur=10;for(let r=0;r<currentPiece.shape.length;r++)for(let c=0;c<currentPiece.shape[r].length;c++){if(!currentPiece.shape[r][c])continue;const px=currentPiece.x+c,py=currentPiece.y+r;if(py>=0)drawBlock(px,py,currentPiece.color,false);}ctx.shadowBlur=0;}
+  if(currentPiece&&!gameOver){const ghostY=getGhostY();if(ghostY!==currentPiece.y){ctx.globalAlpha=0.25;for(let r=0;r<currentPiece.shape.length;r++)for(let c=0;c<currentPiece.shape[r].length;c++){if(!currentPiece.shape[r][c])continue;const px=currentPiece.x+c,py=currentPiece.y+r+(ghostY-currentPiece.y);if(py>=0&&py<ROWS)drawBlock(px,py,currentPiece.color,true);}ctx.globalAlpha=1;}ctx.shadowColor=currentPiece.color;ctx.shadowBlur=10;for(let r=0;r<currentPiece.shape.length;r++)for(let c=0;c<currentPiece.shape[r].length;c++){if(!currentPiece.shape[r][c])continue;const px=currentPiece.x+c,py=currentPiece.y+r;if(py>=0)drawBlock(px,py,currentPiece.color,false);}ctx.shadowBlur=0;}
   if(shakeTimer>0){ctx.translate(Math.sin(shakeTimer)*5,Math.sin(shakeTimer)*5);shakeTimer--;}
   ctx.restore();
   ctx.setTransform(1,0,0,1,0,0);
