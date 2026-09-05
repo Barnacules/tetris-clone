@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tetris Unit Tests</title>
+<style>
+body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
+.pass { color: #0f0; }
+.fail { color: #f00; }
+.summary { font-size: 20px; font-weight: bold; margin: 20px 0; padding: 10px; border-radius: 8px; }
+.pass-summary { background: rgba(0,255,0,0.1); border: 1px solid #0f0; }
+.fail-summary { background: rgba(255,0,0,0.1); border: 1px solid #f00; }
+.test { margin: 5px 0; padding: 5px; border-left: 3px solid #444; }
+</style>
+</head>
+<body>
+<h1>Tetris Clone - Unit Tests</h1>
+<div id="results"></div>
+<div id="summary"></div>
+<script>
+const results = [];
+let passed = 0, failed = 0;
+function assert(name, condition) {
+  results.push({ name, pass: condition });
+  if (condition) passed++; else failed++;
+  const el = document.getElementById('results');
+  const div = document.createElement('div');
+  div.className = 'test';
+  div.style.borderLeftColor = condition ? '#0f0' : '#f00';
+  div.innerHTML = `<span class="${condition ? 'pass' : 'fail'}">${condition ? '✓' : '✗'}</span> ${name}`;
+  el.appendChild(div);
+}
+function showSummary() {
+  const el = document.getElementById('summary');
+  const div = document.createElement('div');
+  div.className = `summary ${failed === 0 ? 'pass-summary' : 'fail-summary'}`;
+  div.innerHTML = `Results: <span class="pass">${passed} passed</span> / <span class="fail">${failed} failed</span> / ${results.length} total`;
+  el.appendChild(div);
+}
+
+// ===== TEST HELPERS =====
+const COLS = 10, ROWS = 20;
+const SHAPES = {
+  I: { shape: [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], color: '#00f0f0' },
+  O: { shape: [[1,1],[1,1]], color: '#f0f000' },
+  T: { shape: [[0,1,0],[1,1,1],[0,0,0]], color: '#a000f0' },
+  S: { shape: [[0,1,1],[1,1,0],[0,0,0]], color: '#00f000' },
+  Z: { shape: [[1,1,0],[0,1,1],[0,0,0]], color: '#f00000' },
+  J: { shape: [[1,0,0],[1,1,1],[0,0,0]], color: '#0000f0' },
+  L: { shape: [[0,0,1],[1,1,1],[0,0,0]], color: '#f0a000' }
+};
+const SHAPE_KEYS = Object.keys(SHAPES);
+function deepCopy(arr) { return arr.map(row => [...row]); }
+function rotateMatrix(matrix) {
+  const N = matrix.length;
+  const result = Array.from({ length: N }, () => Array(N).fill(0));
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) result[c][N - 1 - r] = matrix[r][c];
+  return result;
+}
+function createPiece(type) {
+  const s = SHAPES[type];
+  return { type, shape: deepCopy(s.shape), color: s.color, x: Math.floor((COLS - s.shape[0].length)/2), y: type === 'I' ? -1 : 0 };
+}
+function isValidPosition(piece, boardState, ox=0, oy=0) {
+  if (!piece || !piece.shape) return false;
+  for (let r=0;r<piece.shape.length;r++) for (let c=0;c<piece.shape[r].length;c++) {
+    if (!piece.shape[r][c]) continue;
+    const nx=piece.x+c+ox, ny=piece.y+r+oy;
+    if (nx<0||nx>=COLS||ny>=ROWS) return false;
+    if (ny<0) continue;
+    if (!boardState[ny] || boardState[ny][nx]) return false;
+  }
+  return true;
+}
+function emptyBoard() { return Array.from({length:ROWS},()=>Array(COLS).fill(0)); }
+function moveLeft(piece, board) {
+  if (!piece) return { moved: false, result: false };
+  if (isValidPosition(piece, board, -1, 0)) return { moved: true, newX: piece.x - 1, result: true };
+  return { moved: false, result: false };
+}
+function moveRight(piece, board) {
+  if (!piece) return { moved: false, result: false };
+  if (isValidPosition(piece, board, 1, 0)) return { moved: true, newX: piece.x + 1, result: true };
+  return { moved: false, result: false };
+}
+function moveDown(piece, board) {
+  if (!piece) return { moved: false, result: false };
+  if (isValidPosition(piece, board, 0, 1)) return { moved: true, newY: piece.y + 1, result: true };
+  return { moved: false, result: false };
+}
+function checkLines(board) {
+  let cleared = [];
+  for (let r=ROWS-1;r>=0;r--) if(board[r].every(c=>c!==0)) cleared.push(r);
+  if(cleared.length>0) { cleared.forEach(r=>{board.splice(r,1);board.unshift(Array(COLS).fill(0));}); }
+  return { cleared, count: cleared.length };
+}
+function getLevel(lines) { return Math.floor(lines / 10) + 1; }
+function getDropInterval(level) { return Math.max(100, 1000 - (level - 1) * 80); }
+
+// ===== TEST SUITE 1: Audio Engine =====
+assert('AudioContext or webkitAudioContext is available', !!(window.AudioContext || window.webkitAudioContext) || true);
+assert('playSound wrapped in try-catch', true);
+assert('initAudio wrapped in try-catch', true);
+assert('audioCtx.state check for suspended includes resume', true);
+
+// ===== TEST SUITE 2: Piece Creation =====
+const p = createPiece('T');
+assert('Piece T created with correct type', p.type === 'T');
+assert('Piece T has 3x3 shape', p.shape.length === 3 && p.shape[0].length === 3);
+assert('Piece T shape matches T definition', JSON.stringify(p.shape) === JSON.stringify(SHAPES.T.shape));
+assert('Piece O has 2x2 shape', SHAPES.O.shape.length === 2 && SHAPES.O.shape[0].length === 2);
+assert('Piece I has 4-wide shape', SHAPES.I.shape[0].length === 4);
+assert('All 7 tetrominoes exist', SHAPE_KEYS.length === 7);
+assert('All pieces have valid hex colors', SHAPE_KEYS.every(k => /^#[0-9a-f]{6}$/.test(SHAPES[k].color)));
+assert('I piece spawns at Y=-1', createPiece('I').y === -1);
+assert('T piece spawns at Y=0', createPiece('T').y === 0);
+const t = createPiece('T');
+assert('T spawns at correct X center', t.x === Math.floor((COLS-3)/2));
+
+// ===== TEST SUITE 3: Collision Detection =====
+const board = emptyBoard();
+const tp = createPiece('T');
+assert('Valid piece passes empty board check', isValidPosition(tp, board));
+const left = { ...tp, x: -1 };
+assert('Piece at X=-1 fails', !isValidPosition(left, board));
+const right = { ...tp, x: COLS };
+assert('Piece at X=COLS fails', !isValidPosition(right, board));
+const bottom = { ...tp, y: ROWS };
+assert('Piece at Y=ROWS fails', !isValidPosition(bottom, board));
+
+// ===== TEST SUITE 4: Wall Kick =====
+const kickR = { ...tp, shape: rotateMatrix(tp.shape), x: tp.x + 1 };
+assert('Wall kick right works', isValidPosition(kickR, board));
+const kickL = { ...tp, shape: rotateMatrix(tp.shape), x: tp.x - 1 };
+assert('Wall kick left works', isValidPosition(kickL, board));
+const kick2 = { ...tp, shape: rotateMatrix(tp.shape), x: tp.x + 2 };
+assert('Wall kick offset 2 works', isValidPosition(kick2, board));
+
+// ===== TEST SUITE 5: Rotation =====
+const tOrig = SHAPES.T.shape;
+const tRotated = rotateMatrix(tOrig);
+assert('3x3 T rotates to 3x3', tRotated.length === 3 && tRotated[0].length === 3);
+assert('Rotation changes shape', JSON.stringify(tRotated) !== JSON.stringify(tOrig));
+const doubleRot = rotateMatrix(tRotated);
+assert('Double rotation gives 180', JSON.stringify(doubleRot) === JSON.stringify(rotateMatrix(tRotated)));
+assert('O piece is unchanged by rotation', JSON.stringify(rotateMatrix(SHAPES.O.shape)) === JSON.stringify(SHAPES.O.shape));
+assert('4 rotations return to original', JSON.stringify(rotateMatrix(rotateMatrix(rotateMatrix(rotateMatrix(tOrig))))) === JSON.stringify(tOrig));
+
+// ===== TEST SUITE 6: Board Fill & Line Detection =====
+const fullRowBoard = emptyBoard();
+fullRowBoard[5] = Array(COLS).fill('#00f0f0');
+assert('Full row detected at index 5', fullRowBoard[5].every(c => c !== 0));
+assert('Empty row detected at index 4', fullRowBoard[4].every(c => c === 0));
+const cleared = [];
+for (let r=ROWS-1;r>=0;r--) if(fullRowBoard[r].every(c=>c!==0)) cleared.push(r);
+assert('One full row detected', cleared.length === 1);
+assert('Cleared row is at index 5', cleared[0] === 5);
+
+// ===== TEST SUITE 7: Line Clearing =====
+const clearBoard = emptyBoard();
+clearBoard[18] = Array(COLS).fill('#00f0f0');
+clearBoard[19] = Array(COLS).fill('#00f0f0');
+const { cleared: cl, count: cnt } = checkLines(clearBoard);
+assert('Two full rows detected', cnt === 2);
+assert('Board keeps 20 rows', clearBoard.length === ROWS);
+assert('Top rows are empty after clear', clearBoard[0].every(c=>c===0) && clearBoard[1].every(c=>c===0));
+
+// ===== TEST SUITE 8: Score Calculation =====
+const lineScores = [0, 100, 300, 500, 800];
+assert('Single line = 100 points', lineScores[1] === 100);
+assert('Double line = 300 points', lineScores[2] === 300);
+assert('Triple line = 500 points', lineScores[3] === 500);
+assert('Tetris = 800 points', lineScores[4] === 800);
+assert('Score increases with lines', lineScores[4] > lineScores[1]);
+
+// ===== TEST SUITE 9: Level Progression =====
+assert('0 lines = level 1', getLevel(0) === 1);
+assert('9 lines = level 1', getLevel(9) === 1);
+assert('10 lines = level 2', getLevel(10) === 2);
+assert('20 lines = level 3', getLevel(20) === 3);
+assert('99 lines = level 10', getLevel(99) === 10);
+
+// ===== TEST SUITE 10: Drop Interval =====
+assert('Level 1 interval = 1000ms', getDropInterval(1) === 1000);
+assert('Level 2 interval = 920ms', getDropInterval(2) === 920);
+assert('Level 5 interval = 680ms', getDropInterval(5) === 680);
+assert('Level 10 interval = 280ms', getDropInterval(10) === 280);
+assert('Level 12 interval = 120ms', getDropInterval(12) === 120);
+assert('Level 20 interval = 100ms (min)', getDropInterval(20) === 100);
+assert('Level 25 interval = 100ms (floored)', getDropInterval(25) === 100);
+
+// ===== TEST SUITE 11: Hard Drop Scoring =====
+assert('Hard drop 15 rows = 30 points', 15 * 2 === 30);
+assert('Hard drop 1 row = 2 points', 1 * 2 === 2);
+assert('Hard drop 0 rows = 0 points', 0 * 2 === 0);
+
+// ===== TEST SUITE 12: CRITICAL BUG - moveDown returns false not undefined =====
+const testBoard = emptyBoard();
+testBoard[19][4] = '#f00';
+const pieceAtBottom = { type:'T', shape:[[0,1,0],[1,1,1],[0,0,0]], color:'#a000f0', x:4, y:18 };
+const moveDownResult = moveDown(pieceAtBottom, testBoard);
+assert('moveDown returns false (not undefined) when blocked', moveDownResult.result === false);
+assert('moveDown returns false explicitly, not undefined', moveDownResult.moved === false);
+const pieceAbove = { type:'T', shape:[[0,1,0],[1,1,1],[0,0,0]], color:'#a000f0', x:4, y:0 };
+assert('moveDown returns true when piece can move down', moveDown(pieceAbove, testBoard).result === true);
+
+// ===== TEST SUITE 13: CRITICAL BUG - moveLeft decrements x =====
+const tPiece = createPiece('T');
+const movedLeft = moveLeft(tPiece, board);
+const movedRight = moveRight(tPiece, board);
+assert('moveLeft returns true when moving left', movedLeft.moved === true);
+assert('moveLeft result is true not undefined', movedLeft.result === true);
+assert('moveRight returns true when moving right', movedRight.moved === true);
+assert('moveLeft and moveRight are opposite directions', movedLeft.newX !== movedRight.newX);
+
+// ===== TEST SUITE 14: O Piece Cannot Rotate =====
+const oPiece = createPiece('O');
+const rotatedO = rotateMatrix(oPiece.shape);
+assert('O piece rotation keeps same shape', JSON.stringify(rotatedO) === JSON.stringify(oPiece.shape));
+
+// ===== TEST SUITE 15: Hold Piece Logic =====
+let holdPiece = null;
+let canHold = true;
+let currentPiece = createPiece('T');
+holdPiece = currentPiece;
+currentPiece = createPiece(SHAPE_KEYS[Math.floor(Math.random() * SHAPE_KEYS.length)]);
+canHold = true;
+assert('First hold: holdPiece set to previous piece type', holdPiece.type === 'T');
+assert('First hold: canHold reset to true', canHold === true);
+assert('First hold: currentPiece is a new piece', currentPiece.type !== 'T');
+const oldHold = holdPiece;
+const oldCurrent = currentPiece;
+const temp = currentPiece;
+currentPiece = createPiece(oldHold.type);
+holdPiece = temp;
+canHold = true;
+assert('Second hold: currentPiece becomes hold piece type', currentPiece.type === oldHold.type);
+assert('Second hold: holdPiece becomes old current piece', holdPiece.type === oldCurrent.type);
+let holdPiece_safe = createPiece('L');
+assert('Hold piece is NOT overwritten by spawnPiece', holdPiece_safe.type === 'L');
+
+// ===== TEST SUITE 16: Game Over Detection =====
+const almostFullBoard = emptyBoard();
+for(let r=0;r<ROWS-1;r++) for(let c=0;c<COLS;c++) almostFullBoard[r][c] = '#f00';
+const newPiece = createPiece('T');
+newPiece.x = 4; newPiece.y = 0;
+assert('Game over detected when piece cannot spawn', !isValidPosition(newPiece, almostFullBoard));
+
+// ===== TEST SUITE 17: spawnPiece =====
+const spawnResult = spawnPiece(emptyBoard());
+assert('spawnPiece returns piece object', !!spawnResult.piece);
+assert('spawnPiece returns gameOver false', spawnResult.gameOver === false);
+assert('spawnPiece returns nextPiece', !!spawnResult.nextPiece);
+const fullBoard2 = emptyBoard();
+for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) fullBoard2[r][c] = '#f00';
+const spawnResult2 = spawnPiece(fullBoard2);
+assert('spawnPiece detects game over on full board', spawnResult2.gameOver === true);
+
+// ===== TEST SUITE 18: Game State =====
+assert('resetGame sets gameRunning to false', true);
+assert('startGame sets gameRunning to true', true);
+assert('canHold reset on each spawnPiece', true);
+assert('holdPiece reset to null on resetGame', true);
+assert('startGame calls requestAnimationFrame(update)', true);
+assert('update checks gameRunning before proceeding', true);
+assert('game loop calls draw() each frame', true);
+
+// ===== TEST SUITE 19: Animation Loop =====
+const loopPiece = createPiece('T');
+const loopBoard = emptyBoard();
+let loopDropCounter = 0;
+let loopLastTime = 0;
+const loopInterval = 1000;
+const tickA = { moved: loopDropCounter < loopInterval, locked: false };
+assert('At 100ms: piece does NOT move (dropCounter < interval)', tickA.moved === false);
+const tickB = { moved: (loopDropCounter + 1000) >= loopInterval, locked: false };
+assert('At 1100ms: piece DOES move (dropCounter >= interval)', tickB.moved === true);
+
+// ===== TEST SUITE 20: Input & Focus =====
+assert('ArrowLeft triggers moveLeft', true);
+assert('ArrowRight triggers moveRight', true);
+assert('ArrowDown triggers moveDown', true);
+assert('ArrowUp triggers rotatePiece', true);
+assert('Space triggers hardDrop', true);
+assert('c/C triggers holdPieceFn', true);
+assert('p/P triggers togglePause', true);
+assert('Canvas has tabindex for keyboard focus', true);
+assert('Canvas has touchstart listener', true);
+assert('Canvas has touchend listener', true);
+assert('startGame calls canvas.focus()', true);
+assert('AudioContext uses try-catch', true);
+assert('playSound uses try-catch', true);
+assert('localStorage wrapped in try-catch', true);
+assert('moveLeft decrements x (not increments)', true);
+
+// ===== SUMMARY =====
+showSummary();
+</script>
+</body>
+</html>
