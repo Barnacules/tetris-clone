@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tetris Clone</title>
+<script src="three.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;width:100%;overflow:hidden}
@@ -14,7 +15,7 @@ body{background:#0a0a2e;display:flex;justify-content:center;align-items:center;f
 #board-canvas{border:2px solid rgba(68,68,255,.5);border-radius:6px;background:#0d0d35;display:block;outline:none}
 #board-canvas:focus{box-shadow:0 0 20px rgba(68,68,255,.5)}
 #next-canvas{border:1px solid rgba(255,255,255,.1);border-radius:6px;background:rgba(255,255,255,.02);display:block}
-.side-panel{display:flex;flex-direction:column;gap:10px;min-width:140px}
+.side-panel{display:flex;flex-direction:column;gap:10px;min-width:150px}
 .panel-box{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center}
 .panel-box h3{font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#8888ff;margin-bottom:3px}
 .panel-box .value{font-size:22px;font-weight:bold;color:#fff}
@@ -100,6 +101,7 @@ function initDOM(){
 let scene,renderer,camera;
 function initThreeJS(){
   try{
+    if(typeof THREE==='undefined'){console.error('[THREE] Not loaded');return;}
     const sc=document.getElementById('scene');
     renderer=new THREE.WebGLRenderer({canvas:sc,alpha:true,antialias:true});
     renderer.setSize(window.innerWidth,window.innerHeight);
@@ -165,14 +167,13 @@ function initMatrix(){mCanvas.width=window.innerWidth;mCanvas.height=window.inne
 function drawMatrix(){mCtx.fillStyle='rgba(0,0,0,.05)';mCtx.fillRect(0,0,mCanvas.width,mCanvas.height);mCtx.fillStyle='#00ff41';mCtx.font='14px monospace';for(let i=0;i<mDrops.length;i++){mCtx.fillText(mChars[Math.floor(Math.random()*mChars.length)],i*18,mDrops[i]*18);if(mDrops[i]*18>mCanvas.height&&Math.random()>.975)mDrops[i]=0;mDrops[i]++;}}
 setInterval(drawMatrix,50);initMatrix();
 
-// ==================== AUDIO ENGINE (SOUND EFFECTS ONLY) ====================
+// ==================== AUDIO (SOUND EFFECTS ONLY) ====================
 function playSound(type){
   try{
     const AC=window.AudioContext||window.webkitAudioContext;
     if(!AC)return;
-    let audioCtx;
     if(!window._tetAudioCtx){window._tetAudioCtx=new AC();}
-    audioCtx=window._tetAudioCtx;
+    const audioCtx=window._tetAudioCtx;
     if(audioCtx.state==='suspended')audioCtx.resume();
     const n=audioCtx.currentTime;
     switch(type){
@@ -215,7 +216,7 @@ const SHAPE_KEYS=Object.keys(SHAPES);
 // ==================== SIZING ====================
 function resizeCanvas(){
   const vw=window.innerWidth,vh=window.innerHeight;
-  const sideW=document.querySelector('.side-panel')?document.querySelector('.side-panel').offsetWidth:200;
+  const sideW=150;
   const maxH=vh-40,maxW=vw-sideW-40;
   const bH=Math.floor(maxH/ROWS),bW=Math.floor(maxW/COLS);
   BLOCK=Math.min(bH,bW,36);BLOCK=Math.max(BLOCK,16);
@@ -224,6 +225,7 @@ function resizeCanvas(){
   if(nextCanvas){const nb=Math.min(24,Math.floor(BLOCK*.7));nextCanvas.width=nb*4+4;nextCanvas.height=nb*4+4;}
   draw();drawNext();
 }
+window.addEventListener('resize',resizeCanvas);
 
 // ==================== GAME FUNCTIONS ====================
 function resetGame(){
@@ -265,7 +267,7 @@ function moveLeft(){if(!gameRunning||gamePaused||gameOver)return;if(isValidPosit
 function moveRight(){if(!gameRunning||gamePaused||gameOver)return;if(isValidPosition(currentPiece,board,1,0)){currentPiece.x++;playSound('move');draw();}}
 function moveDown(){if(!gameRunning||gamePaused||gameOver)return false;if(isValidPosition(currentPiece,board,0,1)){currentPiece.y++;score+=1;dropCounter=0;draw();return true;}return false;}
 function hardDrop(){if(!gameRunning||gamePaused||gameOver||lockedInFlight)return;let d=0;while(isValidPosition(currentPiece,board,0,1)){currentPiece.y++;d++;}score+=d*2;playSound('drop');lockPiece();draw();shakeTimer=15;log('Drop:'+d);}
-function rotatePiece(){if(!gameRunning||gamePaused||gameOver)return;if(currentPiece.type==='O')return;const rot=rotateMatrix(currentPiece.shape);const test={...currentPiece,shape:rot};if(isValidPosition(test,board)){currentPiece.shape=rot;playSound('rotate');draw();}else{for(const off of[-1,1,-2,2]){const test={...currentPiece,shape:rot,x:currentPiece.x+off};if(isValidPosition(test,board)){currentPiece.shape=rot;currentPiece.x+=off;playSound('rotate');draw();return;}}}}
+function rotatePiece(){if(!gameRunning||gamePaused||gameOver)return;if(currentPiece.type==='O')return;const rot=rotateMatrix(currentPiece.shape);const test={type:currentPiece.type,shape:rot,color:currentPiece.color,x:currentPiece.x,y:currentPiece.y};if(isValidPosition(test,board)){currentPiece.shape=rot;playSound('rotate');draw();}else{for(const off of[-1,1,-2,2]){const test2={type:currentPiece.type,shape:rot,color:currentPiece.color,x:currentPiece.x+off,y:currentPiece.y};if(isValidPosition(test2,board)){currentPiece.shape=rot;currentPiece.x+=off;playSound('rotate');draw();return;}}}}
 function lockPiece(){
   if(lockedInFlight)return;
   lockedInFlight=true;
@@ -282,16 +284,16 @@ function checkLines(){
     const nl=Math.floor(lines/10)+1;if(nl>level){level=nl;dropInterval=Math.max(100,1000-(level-1)*80);playSound('levelup');}
     playSound(cnt===4?'tetris':cnt===3?'clear3':cnt===2?'clear2':'clear');
     emitParticles(canvas.width/2,canvas.height/2,cnt*20,'#fff');
-    animations.push(...cleared.map(r=>({type:'clear',row:r,time:performance.now()})));
+    animations.push.apply(animations,cleared.map(function(r){return{type:'clear',row:r,time:performance.now()};}));
     log('Lines:'+cnt);
   }
   updateDisplays();
 }
-function emitParticles(cx,cy,cnt,color){for(let i=0;i<cnt;i++)particles2D.push({x:cx,y:cy,vx:(Math.random()-.5)*8,vy=(Math.random()-.5)*8-2,life:1,decay:.01+Math.random()*.02,size:2+Math.random()*4,color});}
+function emitParticles(cx,cy,cnt,color){for(let i=0;i<cnt;i++)particles2D.push({x:cx,y:cy,vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*8-2,life:1,decay:.01+Math.random()*.02,size:2+Math.random()*4,color});}
 
 // ==================== DRAWING ====================
-function lightenColor(hex,amt){const n=parseInt(hex.slice(1),16);return `rgb(${Math.min(255,(n>>16)+Math.round(255*amt))},${Math.min(255,((n>>8)&0xFF)+Math.round(255*amt))},${Math.min(255,(n&0xFF)+Math.round(255*amt))})`;}
-function darkenColor(hex,amt){const n=parseInt(hex.slice(1),16);return `rgb(${Math.max(0,Math.round((n>>16)*(1-amt)))},${Math.max(0,Math.round(((n>>8)&0xFF)*(1-amt)))},${Math.max(0,Math.round((n&0xFF)*(1-amt)))})`;}
+function lightenColor(hex,amt){const n=parseInt(hex.slice(1),16);return 'rgb('+Math.min(255,(n>>16)+Math.round(255*amt))+','+Math.min(255,((n>>8)&0xFF)+Math.round(255*amt))+','+Math.min(255,(n&0xFF)+Math.round(255*amt))+')';}
+function darkenColor(hex,amt){const n=parseInt(hex.slice(1),16);return 'rgb('+Math.max(0,Math.round((n>>16)*(1-amt)))+','+Math.max(0,Math.round(((n>>8)&0xFF)*(1-amt)))+','+Math.max(0,Math.round((n&0xFF)*(1-amt)))+')';}
 function drawBlock(x,y,color,flash){
   if(!ctx)return;const p=1,bx=x*BLOCK+p,by=y*BLOCK+p,bs=BLOCK-p*2;
   const grad=ctx.createLinearGradient(bx,by,bx,by+bs);
@@ -308,7 +310,7 @@ function draw(){
   ctx.strokeStyle='rgba(255,255,255,.03)';ctx.lineWidth=.5;
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)ctx.strokeRect(c*BLOCK,r*BLOCK,BLOCK,BLOCK);
   const now=performance.now();
-  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(board[r][c]){const a=animations.some(a=>a.type==='clear'&&a.row===r&&now-a.time<300);drawBlock(c,r,board[r][c],a);}
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(board[r][c]){const a=animations.some(function(a){return a.type==='clear'&&a.row===r&&now-a.time<300;});drawBlock(c,r,board[r][c],a);}
   if(currentPiece&&!gameOver){ctx.shadowColor=currentPiece.color;ctx.shadowBlur=10;for(let r=0;r<currentPiece.shape.length;r++)for(let c=0;c<currentPiece.shape[r].length;c++){if(!currentPiece.shape[r][c])continue;const px=currentPiece.x+c,py=currentPiece.y+r;if(py>=0)drawBlock(px,py,currentPiece.color,false);}ctx.shadowBlur=0;}
   if(shakeTimer>0){ctx.translate(Math.sin(shakeTimer)*5,Math.sin(shakeTimer)*5);shakeTimer--;}
   ctx.restore();
@@ -325,11 +327,12 @@ const pCanvas=document.createElement('canvas');pCanvas.id='particles-canvas';pCa
 const pCtx2=pCanvas.getContext('2d');let particles2D=[];
 function resizePCanvas(){pCanvas.width=window.innerWidth;pCanvas.height=window.innerHeight;}
 window.addEventListener('resize',resizePCanvas);resizePCanvas();
-function animateParticles(){pCtx2.clearRect(0,0,pCanvas.width,pCanvas.height);particles2D=particles2D.filter(p=>p.life>0);particles2D.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.15;p.life-=p.decay;pCtx2.globalAlpha=p.life;pCtx2.fillStyle=p.color;pCtx2.beginPath();pCtx2.arc(p.x,p.y,Math.max(.5,p.size*p.life),0,Math.PI*2);pCtx2.fill();});pCtx2.globalAlpha=1;requestAnimationFrame(animateParticles);}
+function animateParticles(){pCtx2.clearRect(0,0,pCanvas.width,pCanvas.height);particles2D=particles2D.filter(function(p){return p.life>0;});particles2D.forEach(function(p){p.x+=p.vx;p.y+=p.vy;p.vy+=.15;p.life-=p.decay;pCtx2.globalAlpha=p.life;pCtx2.fillStyle=p.color;pCtx2.beginPath();pCtx2.arc(p.x,p.y,Math.max(.5,p.size*p.life),0,Math.PI*2);pCtx2.fill();});pCtx2.globalAlpha=1;requestAnimationFrame(animateParticles);}
 animateParticles();
 
 // ==================== GAME LOOP ====================
-function update(time=0){
+function update(time){
+  time=time||0;
   if(!gameRunning||gamePaused||gameOver){animFrameId=requestAnimationFrame(update);return;}
   const delta=time-lastTime;lastTime=time;dropCounter+=delta;
   if(dropCounter>=dropInterval){dropCounter=0;if(!moveDown()){lockPiece();}}
@@ -339,7 +342,7 @@ function update(time=0){
 
 // ==================== START/PAUSE ====================
 function startGame(){
-  log('START GAME');initAudio();resetGame();gameRunning=true;lastTime=performance.now();
+  log('START GAME');resetGame();gameRunning=true;lastTime=performance.now();
   hideAllOverlays();canvas.focus();
   if(animFrameId)cancelAnimationFrame(animFrameId);
   update();
@@ -349,7 +352,7 @@ function togglePause(){if(!gameRunning||gameOver)return;gamePaused=!gamePaused;i
 
 // ==================== INPUT ====================
 function setupInput(){
-  canvas.addEventListener('keydown',e=>{
+  canvas.addEventListener('keydown',function(e){
     if(e.key==='ArrowLeft'||e.key==='a')moveLeft();
     else if(e.key==='ArrowRight'||e.key==='d')moveRight();
     else if(e.key==='ArrowDown'||e.key==='s')moveDown();
@@ -362,8 +365,8 @@ function setupInput(){
   document.getElementById('restart-btn').addEventListener('click',startGame);
   document.getElementById('resume-btn').addEventListener('click',startGame);
   let tsx=0,tsy=0;
-  canvas.addEventListener('touchstart',e=>{e.preventDefault();tsx=e.touches[0].clientX;tsy=e.touches[0].clientY;},{passive:false});
-  canvas.addEventListener('touchend',e=>{e.preventDefault();const dx=e.changedTouches[0].clientX-tsx,dy=e.changedTouches[0].clientY-tsy;if(Math.abs(dx)>Math.abs(dy)){if(dx>30)moveRight();else if(dx<-30)moveLeft();}else{if(dy>30)moveDown();else if(dy<-50)hardDrop();}},{passive:false});
+  canvas.addEventListener('touchstart',function(e){e.preventDefault();tsx=e.touches[0].clientX;tsy=e.touches[0].clientY;},{passive:false});
+  canvas.addEventListener('touchend',function(e){e.preventDefault();const dx=e.changedTouches[0].clientX-tsx,dy=e.changedTouches[0].clientY-tsy;if(Math.abs(dx)>Math.abs(dy)){if(dx>30)moveRight();else if(dx<-30)moveLeft();}else{if(dy>30)moveDown();else if(dy<-50)hardDrop();}},{passive:false});
   canvas.setAttribute('tabindex','0');
 }
 
@@ -374,9 +377,10 @@ function init(){
   resetGame();
   initThreeJS();
   setupInput();
-  log('Game ready - no music, effects only');
+  log('Game ready - effects only, no BGM');
 }
 document.addEventListener('DOMContentLoaded',init);
+window.addEventListener('resize',resizeThree);
 </script>
 </body>
 </html>
