@@ -18,16 +18,15 @@ body{background:#0a0a2e;display:flex;justify-content:center;align-items:center;f
 .panel-box{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center}
 .panel-box h3{font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#8888ff;margin-bottom:3px}
 .panel-box .value{font-size:22px;font-weight:bold;color:#fff}
-.overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,.8);z-index:20;opacity:0;pointer-events:none;transition:opacity .3s;text-align:center}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,.82);z-index:20;opacity:0;pointer-events:none;transition:opacity .3s;text-align:center}
 .overlay.active{opacity:1;pointer-events:all}
-.overlay h1{font-size:48px;margin-bottom:8px;text-shadow:0 0 40px #4488ff}
-.overlay h2{font-size:28px;margin-bottom:16px;text-shadow:0 0 20px #ff4444}
+.overlay h1{font-size:44px;margin-bottom:8px;text-shadow:0 0 40px #4488ff}
+.overlay h2{font-size:26px;margin-bottom:16px;text-shadow:0 0 20px #ff4444}
 .overlay p{font-size:14px;color:#aaa;margin-bottom:6px}
 .btn{margin-top:14px;padding:12px 30px;font-size:17px;font-weight:bold;border:none;border-radius:8px;cursor:pointer;background:linear-gradient(135deg,#4466ff,#6644ff);color:#fff;box-shadow:0 4px 20px rgba(68,102,255,.4);transition:all .2s}
 .btn:hover{transform:scale(1.06);box-shadow:0 6px 30px rgba(68,102,255,.6)}
 .controls-info{font-size:10px;color:#666;line-height:1.6;margin-top:8px}
 .controls-info span{color:#888}
-#mute-btn{position:fixed;top:8px;right:8px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);border-radius:6px;color:#fff;padding:6px 10px;font-size:13px;cursor:pointer;z-index:25}
 #level-badge{position:fixed;top:8px;left:8px;background:rgba(68,68,255,.2);border:2px solid rgba(68,68,255,.4);border-radius:6px;color:#8888ff;padding:4px 10px;font-size:14px;font-weight:bold}
 #debug{position:fixed;bottom:6px;left:6px;color:#ff6666;font-family:monospace;font-size:11px;background:rgba(0,0,0,.8);padding:6px;border-radius:4px;z-index:25}
 #matrix-canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;opacity:.12}
@@ -46,7 +45,7 @@ body{background:#0a0a2e;display:flex;justify-content:center;align-items:center;f
       <div class="controls-info">
         <span>&larr; &rarr;</span> Move &nbsp;|&nbsp; <span>&uarr;</span> Rotate<br>
         <span>Hold</span> Soft Drop &nbsp;|&nbsp; <span>Space</span> Hard Drop<br>
-        <span>P</span> Pause &nbsp;|&nbsp; <span>M</span> Mute
+        <span>P</span> Pause
       </div>
     </div>
     <div class="overlay" id="pause-overlay">
@@ -68,11 +67,9 @@ body{background:#0a0a2e;display:flex;justify-content:center;align-items:center;f
     <div class="panel-box"><h3>Lines</h3><div class="value" id="lines-display">0</div></div>
     <div class="panel-box"><h3>Next</h3><canvas id="next-canvas" width="120" height="120"></canvas></div>
     <div class="panel-box"><h3>High Score</h3><div class="value" id="high-score-display">0</div></div>
-    <div class="panel-box"><h3>Music</h3><div class="value" id="music-level">Level 1</div></div>
   </div>
 </div>
 <div id="level-badge">LVL 1</div>
-<button id="mute-btn">Music: ON</button>
 <div id="debug"></div>
 
 <script>
@@ -168,74 +165,14 @@ function initMatrix(){mCanvas.width=window.innerWidth;mCanvas.height=window.inne
 function drawMatrix(){mCtx.fillStyle='rgba(0,0,0,.05)';mCtx.fillRect(0,0,mCanvas.width,mCanvas.height);mCtx.fillStyle='#00ff41';mCtx.font='14px monospace';for(let i=0;i<mDrops.length;i++){mCtx.fillText(mChars[Math.floor(Math.random()*mChars.length)],i*18,mDrops[i]*18);if(mDrops[i]*18>mCanvas.height&&Math.random()>.975)mDrops[i]=0;mDrops[i]++;}}
 setInterval(drawMatrix,50);initMatrix();
 
-// ==================== AUDIO ENGINE ====================
-let audioCtx=null,musicMuted=false;
-let bgmOsc=null,bgmGain=null,bgmLFO=null,bgmLFOGain=null;
-let bgmNotes=[],bgmNoteIdx=0,bgmNoteTimer=null;
-
-function initAudio(){
-  if(audioCtx)return;
+// ==================== AUDIO ENGINE (SOUND EFFECTS ONLY) ====================
+function playSound(type){
   try{
     const AC=window.AudioContext||window.webkitAudioContext;
     if(!AC)return;
-    audioCtx=new AC();
-    if(audioCtx.state==='suspended')audioCtx.resume();
-  }catch(e){audioCtx=null;}
-}
-
-function stopBGM(){
-  try{
-    if(bgmNoteTimer){clearInterval(bgmNoteTimer);bgmNoteTimer=null;}
-    if(bgmOsc){try{bgmOsc.stop();}catch(e){}bgmOsc.disconnect();bgmOsc=null;}
-    if(bgmGain){try{bgmGain.disconnect();}catch(e){}bgmGain=null;}
-    if(bgmLFO){try{bgmLFO.stop();}catch(e){}bgmLFO.disconnect();bgmLFO=null;}
-    if(bgmLFOGain){try{bgmLFOGain.disconnect();}catch(e){}bgmLFOGain=null;}
-  }catch(e){}
-  bgmOsc=null;bgmGain=null;bgmLFO=null;bgmLFOGain=null;
-}
-
-function startBGM(level){
-  if(!audioCtx||musicMuted)return;
-  stopBGM();
-  const tempo=[80,85,90,100,105,110,115,120,128,140][Math.min(level-1,9)];
-  const rootFreqs=[261.63,293.66,329.63,349.23,392.00,440.00,466.16,523.25,587.33,659.26][Math.min(level-1,9)];
-  const intervals=[0,4,7,12][Math.floor(Math.random()*4)];
-  const notes=[rootFreqs,rootFreqs*Math.pow(2,4/12),rootFreqs*Math.pow(2,7/12)];
-  const beat=60/tempo;
-  try{
-    bgmGain=audioCtx.createGain();
-    bgmGain.gain.value=0.06;
-    bgmGain.connect(audioCtx.destination);
-    bgmLFO=audioCtx.createOscillator();
-    bgmLFO.type='sine';
-    bgmLFO.frequency.value=0.5+level*0.05;
-    bgmLFOGain=audioCtx.createGain();
-    bgmLFOGain.gain.value=3;
-    bgmLFO.connect(bgmLFOGain);
-    bgmLFOGain.connect(bgmGain.gain);
-    bgmLFO.start();
-    bgmOsc=audioCtx.createOscillator();
-    bgmOsc.type='sine';
-    bgmOsc.frequency.value=notes[0];
-    bgmOsc.connect(bgmGain);
-    bgmOsc.start();
-    bgmNoteIdx=0;
-    bgmNotes=notes;
-    bgmNoteTimer=setInterval(()=>{
-      if(!audioCtx||musicMuted)return;
-      try{
-        const n=audioCtx.currentTime;
-        const f=bgmNotes[bgmNoteIdx%bgmNotes.length];
-        bgmOsc.frequency.setTargetAtTime(f,n,0.05);
-        bgmNoteIdx++;
-      }catch(e){}
-    },beat*400);
-  }catch(e){console.log('[BGM] Error:',e.message);stopBGM();}
-}
-
-function playSound(type){
-  if(!audioCtx||musicMuted)return;
-  try{
+    let audioCtx;
+    if(!window._tetAudioCtx){window._tetAudioCtx=new AC();}
+    audioCtx=window._tetAudioCtx;
     if(audioCtx.state==='suspended')audioCtx.resume();
     const n=audioCtx.currentTime;
     switch(type){
@@ -263,7 +200,7 @@ let lockedInFlight=false;
 try{highScore=parseInt(localStorage.getItem('tetris_high'))||0;}catch(e){highScore=0;}
 
 function log(msg){const d=document.getElementById('debug');if(d)d.textContent=msg;console.log('[TETRIS]',msg);}
-function updateDisplays(){document.getElementById('score-display').textContent=score;document.getElementById('level-display').textContent=level;document.getElementById('lines-display').textContent=lines;document.getElementById('level-badge').textContent='LVL '+level;document.getElementById('music-level').textContent='Level '+level;}
+function updateDisplays(){document.getElementById('score-display').textContent=score;document.getElementById('level-display').textContent=level;document.getElementById('lines-display').textContent=lines;document.getElementById('level-badge').textContent='LVL '+level;}
 function showOverlay(id){const e=document.getElementById(id);if(e)e.classList.add('active');}
 function hideAllOverlays(){document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('active'));}
 
@@ -311,7 +248,7 @@ function spawnPiece(){
     document.getElementById('final-lines').textContent=lines;
     document.getElementById('final-level').textContent=level;
     try{if(score>highScore){highScore=score;localStorage.setItem('tetris_high',highScore.toString());document.getElementById('high-score-display').textContent=highScore;}}catch(e){}
-    stopBGM();log('GAME OVER');return;
+    log('GAME OVER');return;
   }
   canHold=true;
   nextPiece=createPiece(SHAPE_KEYS[Math.floor(Math.random()*SHAPE_KEYS.length)]);
@@ -332,7 +269,7 @@ function rotatePiece(){if(!gameRunning||gamePaused||gameOver)return;if(currentPi
 function lockPiece(){
   if(lockedInFlight)return;
   lockedInFlight=true;
-  for(let r=0;r<currentPiece.shape.length;r++)for(let c=0;c<currentPiece.shape[r].length;c++){if(!currentPiece.shape[r][c])continue;const by=currentPiece.y+r,bx=currentPiece.x+c;if(by<0){gameOver=true;gameRunning=false;playSound('gameover');showOverlay('gameover-overlay');document.getElementById('final-score').textContent=score;document.getElementById('final-lines').textContent=lines;document.getElementById('final-level').textContent=level;try{if(score>highScore){highScore=score;localStorage.setItem('tetris_high',highScore.toString());document.getElementById('high-score-display').textContent=highScore;}}catch(e){}stopBGM();lockedInFlight=false;return;}board[by][bx]=currentPiece.color;}
+  for(let r=0;r<currentPiece.shape.length;r++)for(let c=0;c<currentPiece.shape[r].length;c++){if(!currentPiece.shape[r][c])continue;const by=currentPiece.y+r,bx=currentPiece.x+c;if(by<0){gameOver=true;gameRunning=false;playSound('gameover');showOverlay('gameover-overlay');document.getElementById('final-score').textContent=score;document.getElementById('final-lines').textContent=lines;document.getElementById('final-level').textContent=level;try{if(score>highScore){highScore=score;localStorage.setItem('tetris_high',highScore.toString());document.getElementById('high-score-display').textContent=highScore;}}catch(e){}log('GAME OVER');lockedInFlight=false;return;}board[by][bx]=currentPiece.color;}
   playSound('drop');checkLines();spawnPiece();lockedInFlight=false;
 }
 function checkLines(){
@@ -342,7 +279,7 @@ function checkLines(){
     const cnt=cleared.length;
     cleared.forEach(r=>{board.splice(r,1);board.unshift(Array(COLS).fill(0));});
     const ls=[0,100,300,500,800];const tb=cnt===4?800:0;score+=(ls[cnt]||cnt*100)+tb*level;lines+=cnt;
-    const nl=Math.floor(lines/10)+1;if(nl>level){level=nl;dropInterval=Math.max(100,1000-(level-1)*80);playSound('levelup');startBGM(level);}
+    const nl=Math.floor(lines/10)+1;if(nl>level){level=nl;dropInterval=Math.max(100,1000-(level-1)*80);playSound('levelup');}
     playSound(cnt===4?'tetris':cnt===3?'clear3':cnt===2?'clear2':'clear');
     emitParticles(canvas.width/2,canvas.height/2,cnt*20,'#fff');
     animations.push(...cleared.map(r=>({type:'clear',row:r,time:performance.now()})));
@@ -350,7 +287,7 @@ function checkLines(){
   }
   updateDisplays();
 }
-function emitParticles(cx,cy,cnt,color){for(let i=0;i<cnt;i++)particles2D.push({x:cx,y:cy,vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*8-2,life:1,decay:.01+Math.random()*.02,size:2+Math.random()*4,color});}
+function emitParticles(cx,cy,cnt,color){for(let i=0;i<cnt;i++)particles2D.push({x:cx,y:cy,vx:(Math.random()-.5)*8,vy=(Math.random()-.5)*8-2,life:1,decay:.01+Math.random()*.02,size:2+Math.random()*4,color});}
 
 // ==================== DRAWING ====================
 function lightenColor(hex,amt){const n=parseInt(hex.slice(1),16);return `rgb(${Math.min(255,(n>>16)+Math.round(255*amt))},${Math.min(255,((n>>8)&0xFF)+Math.round(255*amt))},${Math.min(255,(n&0xFF)+Math.round(255*amt))})`;}
@@ -400,16 +337,15 @@ function update(time=0){
   animFrameId=requestAnimationFrame(update);
 }
 
-// ==================== START/PAUSE/MUTE ====================
+// ==================== START/PAUSE ====================
 function startGame(){
   log('START GAME');initAudio();resetGame();gameRunning=true;lastTime=performance.now();
   hideAllOverlays();canvas.focus();
   if(animFrameId)cancelAnimationFrame(animFrameId);
   update();
-  if(!musicMuted)startBGM(1);log('Game started!');
+  log('Game started!');
 }
 function togglePause(){if(!gameRunning||gameOver)return;gamePaused=!gamePaused;if(gamePaused){showOverlay('pause-overlay');if(animFrameId)cancelAnimationFrame(animFrameId);}else{hideAllOverlays();lastTime=performance.now();canvas.focus();update();}}
-function toggleMute(){musicMuted=!musicMuted;const btn=document.getElementById('mute-btn');if(btn)btn.textContent=musicMuted?'Music: OFF':'Music: ON';if(musicMuted)stopBGM();else if(gameRunning&&!gamePaused&&!gameOver)startBGM(level);log('Mute:'+musicMuted);}
 
 // ==================== INPUT ====================
 function setupInput(){
@@ -421,12 +357,10 @@ function setupInput(){
     else if(e.key===' '){e.preventDefault();hardDrop();}
     else if(e.key==='c'||e.key==='C')holdPieceFn();
     else if(e.key==='p'||e.key==='P')togglePause();
-    else if(e.key==='m'||e.key==='M')toggleMute();
   });
   document.getElementById('start-btn').addEventListener('click',startGame);
   document.getElementById('restart-btn').addEventListener('click',startGame);
   document.getElementById('resume-btn').addEventListener('click',startGame);
-  document.getElementById('mute-btn').addEventListener('click',toggleMute);
   let tsx=0,tsy=0;
   canvas.addEventListener('touchstart',e=>{e.preventDefault();tsx=e.touches[0].clientX;tsy=e.touches[0].clientY;},{passive:false});
   canvas.addEventListener('touchend',e=>{e.preventDefault();const dx=e.changedTouches[0].clientX-tsx,dy=e.changedTouches[0].clientY-tsy;if(Math.abs(dx)>Math.abs(dy)){if(dx>30)moveRight();else if(dx<-30)moveLeft();}else{if(dy>30)moveDown();else if(dy<-50)hardDrop();}},{passive:false});
@@ -440,7 +374,7 @@ function init(){
   resetGame();
   initThreeJS();
   setupInput();
-  log('Game ready');
+  log('Game ready - no music, effects only');
 }
 document.addEventListener('DOMContentLoaded',init);
 </script>

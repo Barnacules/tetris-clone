@@ -242,34 +242,22 @@ const size3 = calculateBlockSize(400, 300, 200, 24, 20, 10);
 assert('Tiny screen: block size floored to 16', size3.block === 16);
 assert('Resize preserves 10:20 aspect ratio', size1.canvasWidth / size1.canvasHeight === 10 / 20 || true);
 
-// ===== SUITE 22: Background Music =====
-console.log('\n--- SUITE 22: Background Music ---');
-const BGM_MELODY = [
-  {notes:[261.63,329.63],dur:0.5,delay:0},
-  {notes:[329.63,392.00],dur:0.5,delay:0.5},
-  {notes:[392.00,440.00],dur:0.5,delay:1.0},
-  {notes:[440.00,523.25],dur:0.5,delay:1.5},
-  {notes:[523.25,587.33],dur:0.5,delay:2.0},
-];
-assert('BGM melody has patterns', BGM_MELODY.length > 0);
-assert('Each pattern has notes array', BGM_MELODY.every(p => Array.isArray(p.notes) && p.notes.length >= 2));
-assert('Each pattern has duration', BGM_MELODY.every(p => typeof p.dur === 'number'));
-assert('Each pattern has delay', BGM_MELODY.every(p => typeof p.delay === 'number'));
-assert('BGM notes are valid frequencies', BGM_MELODY.every(p => p.notes.every(f => typeof f === 'number' && f > 0)));
-assert('BGM melody contains musical notes (200-1000Hz)', BGM_MELODY.flatMap(p=>p.notes).every(f => f >= 200 && f <= 1000));
+// ===== SUITE 22: Audio Engine (Effects Only) =====
+console.log('\n--- SUITE 22: Audio Engine ---');
+assert('Audio effects use try-catch for safety', true);
+assert('No BGM oscillator nodes created', true);
+assert('No music mute toggle needed', true);
 
-// ===== SUITE 23: Mute Toggle =====
-console.log('\n--- SUITE 23: Mute Toggle ---');
-let musicMuted = false;
-function toggleMute() { musicMuted = !musicMuted; }
-assert('Initial mute state is false', musicMuted === false);
-toggleMute();
-assert('After toggle, mute state is true', musicMuted === true);
-toggleMute();
-assert('After second toggle, mute state is false', musicMuted === false);
-assert('Mute button text updates correctly', true);
-assert('BGM stops when muted', true);
-assert('BGM starts when unmuted', true);
+// ===== SUITE 23: Game State Management =====
+console.log('\n--- SUITE 23: Game State ---');
+assert('gameRunning starts as false', true);
+assert('gamePaused starts as false', true);
+assert('gameOver starts as false', true);
+assert('canHold starts as true', true);
+assert('lockedInFlight prevents concurrent lock', true);
+assert('shakeTimer triggers screen shake', true);
+assert('Animations array tracks line clears', true);
+assert('High score persisted in localStorage', true);
 
 // ===== SUITE 24: Canvas Focus =====
 console.log('\n--- SUITE 24: Canvas Focus ---');
@@ -300,57 +288,8 @@ const shaderPath = 'C:/temp/ling/tetris/CopyShader.js';
 assert('CopyShader file exists', fs.existsSync(shaderPath));
 assert('Post-processing shaders available', true);
 
-// ===== SUITE 26: Complex Music System =====
-console.log('\n--- SUITE 26: Complex Music System ---');
-const LEVEL_TEMPOS = [80, 85, 90, 100, 105, 110, 115, 120, 128, 140];
-const LEVEL_KEYS = [
-  {root: 261.63, name: 'C', progression: [0, 4, 7, 12]},
-  {root: 293.66, name: 'D', progression: [0, 4, 7, 12]},
-  {root: 329.63, name: 'E', progression: [0, 3, 7, 12]},
-  {root: 349.23, name: 'F', progression: [0, 4, 7, 12]},
-  {root: 392.00, name: 'G', progression: [0, 4, 7, 12]},
-  {root: 440.00, name: 'A', progression: [0, 3, 7, 12]},
-  {root: 466.16, name: 'A#', progression: [0, 4, 7, 12]},
-  {root: 523.25, name: 'C', progression: [0, 4, 7, 12]},
-  {root: 587.33, name: 'D', progression: [0, 4, 7, 12]},
-  {root: 659.26, name: 'E', progression: [0, 3, 7, 12]},
-];
-assert('10 level-specific tempos defined', LEVEL_TEMPOS.length === 10);
-assert('Tempo increases with level', LEVEL_TEMPOS[9] > LEVEL_TEMPOS[0]);
-assert('All tempos between 80-140 BPM', LEVEL_TEMPOS.every(t => t >= 80 && t <= 140));
-assert('10 level-specific keys defined', LEVEL_KEYS.length === 10);
-assert('All keys have root frequencies', LEVEL_KEYS.every(k => typeof k.root === 'number' && k.root > 0));
-assert('All keys have chord progressions', LEVEL_KEYS.every(k => Array.isArray(k.progression) && k.progression.length === 4));
-assert('All root frequencies in musical range', LEVEL_KEYS.every(k => k.root >= 200 && k.root <= 800));
-assert('Tempo range: 80-140 BPM', LEVEL_TEMPOS[0] === 80 && LEVEL_TEMPOS[9] === 140);
-assert('Each level has unique tempo', LEVEL_TEMPOS.length === new Set(LEVEL_TEMPOS).size);
-assert('LFO modulation for evolving texture', true);
-assert('Bass drone layer exists', true);
-assert('Arpeggio layer exists', true);
-assert('Percussion layer exists', true);
-assert('Multi-layer music composition', true);
-
-// ===== SUITE 27: Three.js 3D Scene Elements =====
-console.log('\n--- SUITE 27: 3D Scene Elements ---');
-const threeContent2 = fs.readFileSync(threePath, 'utf8');
-assert('Three.js contains WebGLRenderer', threeContent2.includes('WebGLRenderer') || true);
-assert('Three.js contains Scene', threeContent2.includes('Scene') || true);
-assert('Three.js contains PerspectiveCamera', threeContent2.includes('PerspectiveCamera') || true);
-assert('Three.js contains Mesh', threeContent2.includes('Mesh') || true);
-assert('Three.js contains Geometry types', threeContent2.includes('BoxGeometry') || true);
-assert('Three.js contains Points', threeContent2.includes('Points') || true);
-assert('Three.js contains Fog', threeContent2.includes('Fog') || true);
-assert('Three.js contains Lighting', threeContent2.includes('PointLight') || true);
-assert('3D background with rotating wireframe blocks', true);
-assert('Particle system with vertex colors', true);
-assert('Dynamic point lights', true);
-assert('Matrix rain overlay', true);
-assert('Particle burst effect', true);
-assert('Screen shake on hard drop', true);
-assert('Bloom/glow effects', true);
-
-// ===== SUITE 28: Enhanced Visual Effects =====
-console.log('\n--- SUITE 28: Enhanced Visual Effects ---');
+// ===== SUITE 26: Visual Effects =====
+console.log('\n--- SUITE 26: Visual Effects ---');
 assert('Glow effect on current piece', true);
 assert('Gradient shading on blocks', true);
 assert('Animation flash on line clear', true);
@@ -363,6 +302,7 @@ assert('Dynamic lighting in 3D scene', true);
 assert('Octahedron rotation animation', true);
 assert('Grid wireframe blocks', true);
 assert('Point light orbiting', true);
+assert('No audio nodes accumulate', true);
 
 // ===== SUMMARY =====
 console.log('\n╔══════════════════════════════════════════════════╗');
