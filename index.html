@@ -689,6 +689,7 @@ function draw() {
   if (!canvas||!canvas.getContext) return;
   const ctx=canvas.getContext('2d');
   if (!ctx) return;
+  if (!board) return;
   ctx.fillStyle='#0a0a2e'; ctx.fillRect(0,0,canvas.width,canvas.height);
   // Grid
   ctx.strokeStyle='rgba(255,255,255,0.03)'; ctx.lineWidth=0.5;
@@ -804,8 +805,8 @@ canvasEl.addEventListener('touchend',e=>{
 try {
   const canvas=document.getElementById('board-canvas');
   const ctx=canvas.getContext('2d');
-  resizeCanvas();
   resetGame();
+  resizeCanvas();
   log('Game ready - auto-start in 2s...');
   setTimeout(()=>{if(!gameRunning)startGame();},2000);
 } catch(e) {
